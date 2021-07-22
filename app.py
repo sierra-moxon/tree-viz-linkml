@@ -16,7 +16,7 @@ def convert_predicate_to_trapi_format(english_predicate: str) -> str:
 
 def convert_category_to_trapi_format(english_category: str) -> str:
     # Converts a string like "named thing" to "NamedThing"
-    return english_category.title().replace(" ", "")
+    return "".join([f"{word[0].upper()}{word[1:]}" for word in english_category.split(" ")])
 
 
 def get_tree_node_recursive(root_node: dict, parent_to_child_map: dict):
