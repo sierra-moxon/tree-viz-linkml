@@ -15,20 +15,21 @@
           font-size: 10px;
         }
         .node circle {
-          fill: #dfdfdf;
-          stroke: #dfdfdf;
+          fill: #b8b8b8;
+          stroke: #b8b8b8;
           stroke-width: 0px;
         }
         .node text {
           font: 12px sans-serif;
+          color: black;
         }
         .node--internal text {
           text-shadow: 0 1px 0 #fff, 0 -1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff;
         }
         .link {
           fill: none;
-          stroke: #dfdfdf;
-          stroke-width: 2px;
+          stroke: #b8b8b8;
+          stroke-width: 1px;
         }
     </style>
 </head>
@@ -101,12 +102,12 @@
 
         // adds the circle to the node
         node.append("circle")
-          .attr("r", 5);
+          .attr("r", 4);
 
         // adds the text to the node
         node.append("text")
           .attr("dy", ".35em")
-          .attr("x", function(d) { return d.children ? -8 : 8; })
+          .attr("x", function(d) { return d.children ? -7 : 7; })
           .style("text-anchor", function(d) {
             return d.children ? "end" : "start"; })
           .text(function(d) { return d.data.name; });
@@ -178,12 +179,12 @@
 
         // adds the circle to the node
         node.append("circle")
-          .attr("r", 5);
+          .attr("r", 4);
 
         // adds the text to the node
         node.append("text")
           .attr("dy", ".35em")
-          .attr("x", function(d) { return d.children ? -8 : 8; })
+          .attr("x", function(d) { return d.children ? -7 : 7; })
           .style("text-anchor", function(d) {
             return d.children ? "end" : "start"; })
           .text(function(d) { return d.data.name; });
