@@ -1,6 +1,6 @@
 # Thanks https://towardsdatascience.com/create-and-deploy-a-simple-web-application-with-flask-and-heroku-103d867298eb
 from collections import defaultdict
-from typing import Tuple
+from typing import Tuple, List
 
 import requests
 import yaml
@@ -25,14 +25,14 @@ def get_tree_node_recursive(root_node: dict, parent_to_child_map: dict):
     if children_predicates:
         children = []
         for child_predicate in children_predicates:
-            child_node = {"name": child_predicate}
+            child_node = {"name": child_predicate, "parent": root_name}
             child_node = get_tree_node_recursive(child_node, parent_to_child_map)
             children.append(child_node)
         root_node["children"] = sorted(children, key=lambda x: x["name"])
     return root_node
 
 
-def load_tree_data(biolink_version: str) -> Tuple[dict, dict, str]:
+def load_predicate_tree_data(biolink_version: str) -> Tuple[List[dict], str]:
     # Grab Biolink yaml file and load into dictionary tree structures
     response = requests.get(f"https://raw.githubusercontent.com/biolink/biolink-model/"
                             f"{biolink_version if biolink_version else 'master'}/biolink-model.yaml",
@@ -47,10 +47,21 @@ def load_tree_data(biolink_version: str) -> Tuple[dict, dict, str]:
             if parent_name_english:
                 parent_name = convert_predicate_to_trapi_format(parent_name_english)
                 parent_to_child_dict[parent_name].add(slot_name)
-        # Build the predicates tree
         root_node = {"name": "related_to"}
         predicate_tree = get_tree_node_recursive(root_node, parent_to_child_dict)
 
+        biolink_version = biolink_model["version"]
+        return [predicate_tree], biolink_version
+    else:
+        return [], ""
+
+
+def load_category_tree_data(biolink_version: str) -> Tuple[List[dict], str]:
+    # Grab Biolink yaml file and load into dictionary tree structures
+    response = requests.get(f"https://raw.githubusercontent.com/biolink/biolink-model/"
+                            f"{biolink_version if biolink_version else 'master'}/biolink-model.yaml",
+                            timeout=10)
+    if response.status_code == 200:
         # Build categories tree
         biolink_model = yaml.safe_load(response.text)
         parent_to_child_dict = defaultdict(set)
@@ -60,25 +71,35 @@ def load_tree_data(biolink_version: str) -> Tuple[dict, dict, str]:
             if parent_name_english:
                 parent_name = convert_category_to_trapi_format(parent_name_english)
                 parent_to_child_dict[parent_name].add(slot_name)
-        # Build the predicates tree
-        root_node = {"name": "NamedThing"}
+
+        root_node = {"name": "NamedThing", "parent": None}
         category_tree = get_tree_node_recursive(root_node, parent_to_child_dict)
 
         biolink_version = biolink_model["version"]
-        return category_tree, predicate_tree, biolink_version
+        return [category_tree], biolink_version
     else:
-        return dict(), dict(), ""
+        return [], ""
 
 
 @app.route("/")
 @app.route("/<biolink_version>")
-def index(biolink_version=None):
-    category_tree, predicate_tree, biolink_version = load_tree_data(biolink_version)
-    return render_template("index.html",
+@app.route("/categories")
+@app.route("/categories/<biolink_version>")
+def categories(biolink_version=None):
+    category_tree, biolink_version = load_category_tree_data(biolink_version)
+    return render_template("categories.html",
                            categories=category_tree,
+                           biolink_version=biolink_version)
+
+
+@app.route("/predicates")
+@app.route("/predicates/<biolink_version>")
+def predicates(biolink_version=None):
+    predicate_tree, biolink_version = load_predicate_tree_data(biolink_version)
+    return render_template("predicates.html",
                            predicates=predicate_tree,
                            biolink_version=biolink_version)
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run()
