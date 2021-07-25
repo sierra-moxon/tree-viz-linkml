@@ -2,30 +2,38 @@ h1,h2,h3,h4,h5,h6,footer,p {
   font-family: Helvetica,sans-serif;
 }
 p a, footer a {
-  text-decoration: none;
   color: rgba(0, 128, 128, 1.0);
 }
 footer {
   font-size: 10px;
 }
 .active {
-  background: rgba(0, 128, 128, 0.8);
+  border-bottom: 3px solid #9a9a9a;
+}
+button:hover.active {
+  background: white;
 }
 button {
-  background: rgba(0, 128, 128, 0.5);
-  border: none;
-  color: white;
-  padding: 8px 14px;
+  cursor: pointer;
+  background: none;
+  border-bottom: 3px solid white;
+  border-top: none;
+  border-right: none;
+  border-left: none;
+  padding: 9px 18px;
+  margin: 0px;
   text-align: center;
   text-decoration: none;
   display: inline-block;
   font-size: 12px;
   text-transform: uppercase;
-  border-radius: 5px;
+}
+button:hover {
+  background: #fafafa;
 }
 button a {
   text-decoration: none;
-  color: white;
+  color: black;
 }
 .small {
   font-size: 11px;
@@ -44,5 +52,5 @@ button a {
 .link {
   fill: none;
   stroke: #ccc;
-  stroke-width: 2px;
+  stroke-width: 1.7px;
 }
