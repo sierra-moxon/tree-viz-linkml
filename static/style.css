@@ -15,6 +15,8 @@ button:hover.active {
 }
 button {
   cursor: pointer;
+  letter-spacing: 1.2px;
+  font-family: Arial,sans-serif;
   background: none;
   border-bottom: 3px solid white;
   border-top: none;
