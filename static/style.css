@@ -43,16 +43,12 @@ button a {
 .node {
   cursor: pointer;
 }
-.node circle {
-  fill: #fff;
-  stroke: #F6BE00;
-  stroke-width: 3px;
-}
 .node text {
   font: 12px sans-serif;
+  text-shadow:-2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px 2px 0 #fff;
 }
 .link {
   fill: none;
-  stroke: #ccc;
-  stroke-width: 1.7px;
+  stroke: rgba(100, 100, 100, 0.4);
+  stroke-width: 1.5px;
 }

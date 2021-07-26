@@ -26,8 +26,8 @@
 
             // ************** Generate the tree diagram	 *****************
             var margin = {top: 10, right: 0, bottom: 10, left: 80},
-                width = 1420 - margin.right - margin.left,
-                rawHeight = (biolinkVersion.startsWith("2") ? 700 : 950)
+                width = 1460 - margin.right - margin.left,
+                rawHeight = (biolinkVersion.startsWith("2") ? 680 : 950)
                 height = rawHeight - margin.top - margin.bottom;
 
             var i = 0,
@@ -61,7 +61,7 @@
                   links = tree.links(nodes);
 
               // Normalize for fixed-depth.
-              nodes.forEach(function(d) { d.y = d.depth * 180; });
+              nodes.forEach(function(d) { d.y = d.depth * 186; });
 
               // Update the nodes…
               var node = svg.selectAll("g.node")
@@ -75,10 +75,10 @@
 
               nodeEnter.append("circle")
                   .attr("r", 1e-6)
-                  .style("fill", function(d) { return d._children ? "#FADE7F" : "#fff"; });
+                  .style("fill", function(d) { return d._children ? "#9a9a9a" : "#555"; });
 
               nodeEnter.append("text")
-                  .attr("x", function(d) { return d.children || d._children ? -10 : 10; })
+                  .attr("x", function(d) { return d.children || d._children ? -6 : 6; })
                   .attr("dy", ".35em")
                   .attr("text-anchor", function(d) { return d.children || d._children ? "end" : "start"; })
                   .text(function(d) { return d.name; })
@@ -90,8 +90,8 @@
                   .attr("transform", function(d) { return "translate(" + d.y + "," + d.x + ")"; });
 
               nodeUpdate.select("circle")
-                  .attr("r", 7)
-                  .style("fill", function(d) { return d._children ? "#FADE7F" : "#fff"; });
+                  .attr("r", 3)
+                  .style("fill", function(d) { return d._children ? "#9a9a9a" : "#555"; });
 
               nodeUpdate.select("text")
                   .style("fill-opacity", 1);
