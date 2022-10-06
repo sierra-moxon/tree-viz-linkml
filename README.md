@@ -11,3 +11,6 @@ Tree visualizations of the [Biolink Model](https://github.com/biolink/biolink-mo
 
 Note: You will need to refresh the browser page to see any local code changes.
 
+### Deployment
+
+Pushing code to `main` automatically triggers a rebuild and deployment of the application.
