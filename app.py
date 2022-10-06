@@ -1,4 +1,5 @@
 # Thanks https://towardsdatascience.com/create-and-deploy-a-simple-web-application-with-flask-and-heroku-103d867298eb
+import argparse
 from collections import defaultdict
 from typing import Tuple, List
 
@@ -102,4 +103,8 @@ def predicates(biolink_version=None):
 
 
 if __name__ == "__main__":
-    app.run()
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument("--debug", dest="debug", action='store_true', default=False)
+    args = arg_parser.parse_args()
+
+    app.run(debug=args.debug)
