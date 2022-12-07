@@ -33,11 +33,19 @@ def get_tree_node_recursive(root_node: dict, parent_to_child_map: dict):
     return root_node
 
 
-def load_predicate_tree_data(biolink_version: str) -> Tuple[List[dict], str]:
-    # Grab Biolink yaml file and load into dictionary tree structures
+def get_biolink_data(biolink_version: str) -> requests.Response:
     response = requests.get(f"https://raw.githubusercontent.com/biolink/biolink-model/"
                             f"{biolink_version if biolink_version else 'master'}/biolink-model.yaml",
                             timeout=10)
+    if response.status_code != 200:  # Sometimes Biolink's tags start with 'v', so try that
+        response = requests.get(f"https://raw.githubusercontent.com/biolink/biolink-model/v{biolink_version}/biolink-model.yaml",
+                                timeout=10)
+    return response
+
+
+def load_predicate_tree_data(biolink_version: str) -> Tuple[List[dict], str]:
+    # Grab Biolink yaml file and load into dictionary tree structures
+    response = get_biolink_data(biolink_version)
     if response.status_code == 200:
         # Build predicates tree
         biolink_model = yaml.safe_load(response.text)
@@ -59,9 +67,7 @@ def load_predicate_tree_data(biolink_version: str) -> Tuple[List[dict], str]:
 
 def load_category_tree_data(biolink_version: str) -> Tuple[List[dict], str]:
     # Grab Biolink yaml file and load into dictionary tree structures
-    response = requests.get(f"https://raw.githubusercontent.com/biolink/biolink-model/"
-                            f"{biolink_version if biolink_version else 'master'}/biolink-model.yaml",
-                            timeout=10)
+    response = get_biolink_data(biolink_version)
     if response.status_code == 200:
         # Build categories tree
         biolink_model = yaml.safe_load(response.text)

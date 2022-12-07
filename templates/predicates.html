@@ -24,10 +24,20 @@
             var treeData = {{predicates|tojson}}
             var biolinkVersion = {{biolink_version|tojson}}
 
+            function getHeight() {
+                if (biolinkVersion.startsWith("3.1")) {
+                    return 2000;
+                } else if (biolinkVersion.startsWith("2") || biolinkVersion.startsWith("3.0")) {
+                    return 2700;
+                } else {
+                    return 3000;
+                }
+            }
+
             // ************** Generate the tree diagram	 *****************
             var margin = {top: 10, right: 0, bottom: 10, left: 80},
                 width = 1500 - margin.right - margin.left,
-                rawHeight = (biolinkVersion.startsWith("2") ? 2400 : 3000)
+                rawHeight = getHeight();
                 height = rawHeight - margin.top - margin.bottom;
 
             var i = 0,
