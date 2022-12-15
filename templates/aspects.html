@@ -9,10 +9,11 @@
     <h2>Visualizations of the Biolink Model</h2>
     <div>
         <button><a href="{{url_for('categories')}}">Categories</a></button>
-        <button class="active"><a href="{{url_for('predicates')}}">Predicates</a></button>
-        <button><a href="{{url_for('aspects')}}">Aspects</a></button>
+        <button><a href="{{url_for('predicates')}}">Predicates</a></button>
+        <button class="active"><a href="{{url_for('aspects')}}">Aspects</a></button>
     </div>
-    <p>Tree visualization of the <b>predicate hierarchy</b> in the <a href="https://biolink.github.io/biolink-model/" target="_blank">Biolink Model</a>.</p>
+    <p>Tree visualization of the <b>aspect hierarchy</b> in the <a href="https://biolink.github.io/biolink-model/" target="_blank">Biolink Model</a>,
+        specifically the <em>GeneOrGeneProductOrChemicalEntityAspectEnum</em> hierarchy (currently the only aspect enum).</p>
     <p>Displaying data for Biolink Model version <span style="font-weight:bold;">{{biolink_version}}</span>.
         <span class="small">View a different version by tacking on "/1.8.1" (or whatever version number) to this page's URL.</span></p>
 
@@ -22,23 +23,17 @@
         <!-- load the d3.js library -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js"></script>
         <script>
-            var treeData = {{predicates|tojson}}
+            var treeData = {{aspects|tojson}}
             var biolinkVersion = {{biolink_version|tojson}}
 
             function getHeight() {
-                if (biolinkVersion.startsWith("3.1")) {
-                    return 2000;
-                } else if (biolinkVersion.startsWith("2") || biolinkVersion.startsWith("3.0")) {
-                    return 2700;
-                } else {
-                    return 3000;
-                }
+                return 500;
             }
 
             // ************** Generate the tree diagram	 *****************
             var margin = {top: 10, right: 0, bottom: 10, left: 80},
-                width = 1500 - margin.right - margin.left,
-                rawHeight = getHeight();
+                width = 1460 - margin.right - margin.left,
+                rawHeight = getHeight()
                 height = rawHeight - margin.top - margin.bottom;
 
             var i = 0,
@@ -72,7 +67,7 @@
                   links = tree.links(nodes);
 
               // Normalize for fixed-depth.
-              nodes.forEach(function(d) { d.y = d.depth * 240; });
+              nodes.forEach(function(d) { d.y = d.depth * 186; });
 
               // Update the nodes…
               var node = svg.selectAll("g.node")

@@ -88,6 +88,32 @@ def load_category_tree_data(biolink_version: str) -> Tuple[List[dict], str]:
         return [], ""
 
 
+def load_aspect_tree_data(biolink_version: str) -> Tuple[List[dict], str]:
+    # Grab Biolink yaml file and load into dictionary tree structures
+    response = get_biolink_data(biolink_version)
+    if response.status_code == 200:
+        biolink_model = yaml.safe_load(response.text)
+        # Figure out if we're on a version of Biolink that has qualifier aspect info
+        biolink_version = biolink_model["version"]
+        if biolink_version >= "3.0.0":
+            aspect_enum_field_name = "gene_or_gene_product_or_chemical_entity_aspect_enum" if biolink_version.startswith("3.0") else "GeneOrGeneProductOrChemicalEntityAspectEnum"
+            # Build aspects tree
+            parent_to_child_dict = defaultdict(set)
+            root_name = "[root]"
+            for aspect_name, info in biolink_model["enums"][aspect_enum_field_name]["permissible_values"].items():
+                parent = info.get("is_a", root_name) if info else root_name
+                parent_to_child_dict[parent].add(aspect_name)
+
+            root_node = {"name": root_name, "parent": None}
+            aspect_tree = get_tree_node_recursive(root_node, parent_to_child_dict)
+        else:
+            aspect_tree = dict()
+
+        return [aspect_tree], biolink_version
+    else:
+        return [], ""
+
+
 @app.route("/")
 @app.route("/<biolink_version>")
 @app.route("/categories")
@@ -105,6 +131,15 @@ def predicates(biolink_version=None):
     predicate_tree, biolink_version = load_predicate_tree_data(biolink_version)
     return render_template("predicates.html",
                            predicates=predicate_tree,
+                           biolink_version=biolink_version)
+
+
+@app.route("/aspects")
+@app.route("/aspects/<biolink_version>")
+def aspects(biolink_version=None):
+    aspect_tree, biolink_version = load_aspect_tree_data(biolink_version)
+    return render_template("aspects.html",
+                           aspects=aspect_tree,
                            biolink_version=biolink_version)
 
 
