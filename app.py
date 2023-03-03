@@ -6,6 +6,7 @@ from typing import Tuple, List
 import requests
 import yaml
 from flask import Flask, render_template, jsonify
+from flask_cors import cross_origin
 
 app = Flask(__name__)
 
@@ -145,6 +146,7 @@ def aspects(biolink_version=None):
 
 @app.route("/major_branches")
 @app.route("/major_branches/<biolink_version>")
+@cross_origin()
 def get_major_branches_maps(biolink_version=None):
     category_tree, biolink_version, parent_to_child_map = load_category_tree_data(biolink_version, return_parent_to_child_dict=True)
     named_thing_node = category_tree[0]
