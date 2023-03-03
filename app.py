@@ -5,7 +5,7 @@ from typing import Tuple, List
 
 import requests
 import yaml
-from flask import Flask, render_template
+from flask import Flask, render_template, jsonify
 
 app = Flask(__name__)
 
@@ -22,11 +22,11 @@ def convert_category_to_trapi_format(english_category: str) -> str:
 
 def get_tree_node_recursive(root_node: dict, parent_to_child_map: dict):
     root_name = root_node["name"]
-    children_predicates = parent_to_child_map.get(root_name, [])
-    if children_predicates:
+    children_names = parent_to_child_map.get(root_name, [])
+    if children_names:
         children = []
-        for child_predicate in children_predicates:
-            child_node = {"name": child_predicate, "parent": root_name}
+        for child_name in children_names:
+            child_node = {"name": child_name, "parent": root_name}
             child_node = get_tree_node_recursive(child_node, parent_to_child_map)
             children.append(child_node)
         root_node["children"] = sorted(children, key=lambda x: x["name"])
@@ -65,7 +65,7 @@ def load_predicate_tree_data(biolink_version: str) -> Tuple[List[dict], str]:
         return [], ""
 
 
-def load_category_tree_data(biolink_version: str) -> Tuple[List[dict], str]:
+def load_category_tree_data(biolink_version: str, return_parent_to_child_dict: bool = False) -> tuple:
     # Grab Biolink yaml file and load into dictionary tree structures
     response = get_biolink_data(biolink_version)
     if response.status_code == 200:
@@ -83,9 +83,9 @@ def load_category_tree_data(biolink_version: str) -> Tuple[List[dict], str]:
         category_tree = get_tree_node_recursive(root_node, parent_to_child_dict)
 
         biolink_version = biolink_model["version"]
-        return [category_tree], biolink_version
+        return ([category_tree], biolink_version, parent_to_child_dict) if return_parent_to_child_dict else ([category_tree], biolink_version)
     else:
-        return [], ""
+        return ([], "", dict()) if return_parent_to_child_dict else ([], "")
 
 
 def load_aspect_tree_data(biolink_version: str) -> Tuple[List[dict], str]:
@@ -141,6 +141,44 @@ def aspects(biolink_version=None):
     return render_template("aspects.html",
                            aspects=aspect_tree,
                            biolink_version=biolink_version)
+
+
+@app.route("/major_branches")
+@app.route("/major_branches/<biolink_version>")
+def get_major_branches_maps(biolink_version=None):
+    category_tree, biolink_version, parent_to_child_map = load_category_tree_data(biolink_version, return_parent_to_child_dict=True)
+    named_thing_node = category_tree[0]
+    # Record which are our depth-one categories (first nodes off of 'NamedThing')
+    depth_one_categories = {depth_one_node["name"] for depth_one_node in named_thing_node["children"]}
+
+    # Map each child to its depth-one ancestor
+    child_to_parent_map = {child_name: parent_name for parent_name, children_names in parent_to_child_map.items()
+                           for child_name in children_names}
+    child_to_depth_one_ancestor_map = dict()
+    for child_name, parent_name in child_to_parent_map.items():
+        if child_name in depth_one_categories:
+            # Record depth one categories as ancestors of themselves
+            ancestor = child_name
+        else:
+            # Keep moving up the ancestral tree until we reach a depth-one category
+            ancestor = parent_name
+            while ancestor and ancestor not in depth_one_categories:
+                ancestor = child_to_parent_map.get(ancestor)
+        child_to_depth_one_ancestor_map[child_name] = ancestor
+
+    # Filter out null values (which must either be mixins or themselves depth-one categories..)
+    child_to_depth_one_ancestor_map = {child: depth_one_ancestor
+                                       for child, depth_one_ancestor in child_to_depth_one_ancestor_map.items()
+                                       if depth_one_ancestor}
+
+    depth_one_nodes_to_descendants_map = defaultdict(list)
+    for child, depth_one_ancestor in child_to_depth_one_ancestor_map.items():
+        depth_one_nodes_to_descendants_map[depth_one_ancestor].append(child)
+
+    response = {"category_to_depth_one_ancestor": child_to_depth_one_ancestor_map,
+                "depth_one_category_to_descendants": depth_one_nodes_to_descendants_map}
+
+    return jsonify(response)
 
 
 if __name__ == "__main__":
