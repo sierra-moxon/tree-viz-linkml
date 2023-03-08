@@ -115,6 +115,76 @@ def load_aspect_tree_data(biolink_version: str) -> Tuple[List[dict], str]:
         return [], ""
 
 
+def load_category_er_tree_data(biolink_version: str, return_parent_to_child_dict: bool = False) -> tuple:
+    # First build the standard category tree
+    category_tree, biolink_version, parent_to_child_map = load_category_tree_data(biolink_version, return_parent_to_child_dict=True)
+    child_to_parent_map = {child_name: parent_name for parent_name, children_names in parent_to_child_map.items()
+                           for child_name in children_names}
+
+    # Then move gene/protein-related subbranches under one new sub-branch within BiologicalEntity
+    biological_entity_sub_branches = parent_to_child_map["BiologicalEntity"]
+    sub_branches_to_keep = {"BiologicalProcessOrActivity", "DiseaseOrPhenotypicFeature", "OrganismalEntity"}
+    sub_branches_to_move = biological_entity_sub_branches.difference(sub_branches_to_keep)
+    new_sub_branch = "GeneticOrMolecularBiologicalEntity"
+    for sub_branch_to_move in sub_branches_to_move:
+        child_to_parent_map[sub_branch_to_move] = new_sub_branch
+    parent_to_child_map_revised = defaultdict(set)
+    for child, parent in child_to_parent_map.items():
+        parent_to_child_map_revised[parent].add(child)
+    parent_to_child_map_revised["BiologicalEntity"].add(new_sub_branch)
+
+    root_node = {"name": "NamedThing", "parent": None}
+    category_tree_for_er = get_tree_node_recursive(root_node, parent_to_child_map_revised)
+
+    return ([category_tree_for_er], biolink_version, parent_to_child_map_revised) if return_parent_to_child_dict else ([category_tree_for_er], biolink_version)
+
+
+def generate_major_branches_maps(biolink_version: str, for_entity_resolution: bool = False) -> dict:
+    if for_entity_resolution:
+        category_tree, biolink_version, parent_to_child_map = load_category_er_tree_data(biolink_version, return_parent_to_child_dict=True)
+    else:
+        category_tree, biolink_version, parent_to_child_map = load_category_tree_data(biolink_version, return_parent_to_child_dict=True)
+    named_thing_node = category_tree[0]
+    # Record which are our depth-one categories (first nodes off of 'NamedThing')
+    # Exception is for BiologicalEntity branch, for entity resolution work; there we use the depth-two categories
+    biological_entity = "BiologicalEntity"
+    named_thing = "NamedThing"
+    if for_entity_resolution:
+        # Move biological entity's sub-branches up one level, onto named thing
+        parent_to_child_map[named_thing] = parent_to_child_map[named_thing].union(parent_to_child_map[biological_entity])
+        # Then remove the biological entity branch, since it no longer has any children
+        parent_to_child_map[named_thing].remove(biological_entity)
+        del parent_to_child_map[biological_entity]
+    major_branches = parent_to_child_map[named_thing]
+
+    # Map each child to its major branch ancestor
+    child_to_parent_map = {child_name: parent_name for parent_name, children_names in parent_to_child_map.items()
+                           for child_name in children_names}
+    child_to_major_branch_map = dict()
+    for child_name, parent_name in child_to_parent_map.items():
+        if child_name in major_branches:
+            # Record major branch categories as ancestors of themselves
+            ancestor = child_name
+        else:
+            # Keep moving up the ancestral tree until we reach a major branch category
+            ancestor = parent_name
+            while ancestor and ancestor not in major_branches:
+                ancestor = child_to_parent_map.get(ancestor)
+        child_to_major_branch_map[child_name] = ancestor
+
+    # Filter out null values (which must either be mixins or themselves major branch categories..)
+    child_to_major_branch_map = {child: major_branch
+                                 for child, major_branch in child_to_major_branch_map.items()
+                                 if major_branch}
+
+    major_branches_to_descendants_map = defaultdict(list)
+    for child, depth_one_ancestor in child_to_major_branch_map.items():
+        major_branches_to_descendants_map[depth_one_ancestor].append(child)
+
+    return {"category_to_major_branch": child_to_major_branch_map,
+            "major_branch_to_descendants": major_branches_to_descendants_map}
+
+
 @app.route("/")
 @app.route("/<biolink_version>")
 @app.route("/categories")
@@ -135,6 +205,15 @@ def predicates(biolink_version=None):
                            biolink_version=biolink_version)
 
 
+@app.route("/categories/er")
+@app.route("/categories/er/<biolink_version>")
+def categories_for_entity_resolution(biolink_version=None):
+    category_tree_for_er, biolink_version = load_category_er_tree_data(biolink_version)
+    return render_template("categories.html",
+                           categories=category_tree_for_er,
+                           biolink_version=biolink_version)
+
+
 @app.route("/aspects")
 @app.route("/aspects/<biolink_version>")
 def aspects(biolink_version=None):
@@ -148,39 +227,16 @@ def aspects(biolink_version=None):
 @app.route("/major_branches/<biolink_version>")
 @cross_origin()
 def get_major_branches_maps(biolink_version=None):
-    category_tree, biolink_version, parent_to_child_map = load_category_tree_data(biolink_version, return_parent_to_child_dict=True)
-    named_thing_node = category_tree[0]
-    # Record which are our depth-one categories (first nodes off of 'NamedThing')
-    depth_one_categories = {depth_one_node["name"] for depth_one_node in named_thing_node["children"]}
+    maps = generate_major_branches_maps(biolink_version, for_entity_resolution=False)
+    return jsonify(maps)
 
-    # Map each child to its depth-one ancestor
-    child_to_parent_map = {child_name: parent_name for parent_name, children_names in parent_to_child_map.items()
-                           for child_name in children_names}
-    child_to_depth_one_ancestor_map = dict()
-    for child_name, parent_name in child_to_parent_map.items():
-        if child_name in depth_one_categories:
-            # Record depth one categories as ancestors of themselves
-            ancestor = child_name
-        else:
-            # Keep moving up the ancestral tree until we reach a depth-one category
-            ancestor = parent_name
-            while ancestor and ancestor not in depth_one_categories:
-                ancestor = child_to_parent_map.get(ancestor)
-        child_to_depth_one_ancestor_map[child_name] = ancestor
 
-    # Filter out null values (which must either be mixins or themselves depth-one categories..)
-    child_to_depth_one_ancestor_map = {child: depth_one_ancestor
-                                       for child, depth_one_ancestor in child_to_depth_one_ancestor_map.items()
-                                       if depth_one_ancestor}
-
-    depth_one_nodes_to_descendants_map = defaultdict(list)
-    for child, depth_one_ancestor in child_to_depth_one_ancestor_map.items():
-        depth_one_nodes_to_descendants_map[depth_one_ancestor].append(child)
-
-    response = {"category_to_depth_one_ancestor": child_to_depth_one_ancestor_map,
-                "depth_one_category_to_descendants": depth_one_nodes_to_descendants_map}
-
-    return jsonify(response)
+@app.route("/major_branches/er")
+@app.route("/major_branches/er/<biolink_version>")
+@cross_origin()
+def get_major_branches_maps_for_entity_resolution(biolink_version=None):
+    maps = generate_major_branches_maps(biolink_version, for_entity_resolution=True)
+    return jsonify(maps)
 
 
 if __name__ == "__main__":
