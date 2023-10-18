@@ -34,24 +34,24 @@ def get_tree_node_recursive(root_node: dict, parent_to_child_map: dict):
     return root_node
 
 
-def get_biolink_data(biolink_version: str) -> requests.Response:
-    response = requests.get(f"https://raw.githubusercontent.com/biolink/biolink-model/"
-                            f"{biolink_version if biolink_version else 'master'}/biolink-model.yaml",
+def get_linkml_data(linkml_version: str) -> requests.Response:
+    response = requests.get(f"https://raw.githubusercontent.com/linkml/linkml-model/"
+                            f"{linkml_version if linkml_version else 'master'}/linkml-model.yaml",
                             timeout=10)
     if response.status_code != 200:  # Sometimes Biolink's tags start with 'v', so try that
-        response = requests.get(f"https://raw.githubusercontent.com/biolink/biolink-model/v{biolink_version}/biolink-model.yaml",
+        response = requests.get(f"https://raw.githubusercontent.com/linkml/linkml-model/v{linkml_version}/linkml-model.yaml",
                                 timeout=10)
     return response
 
 
-def load_predicate_tree_data(biolink_version: str) -> Tuple[List[dict], str]:
+def load_predicate_tree_data(linkml_version: str) -> Tuple[List[dict], str]:
     # Grab Biolink yaml file and load into dictionary tree structures
-    response = get_biolink_data(biolink_version)
+    response = get_linkml_data(linkml_version)
     if response.status_code == 200:
         # Build predicates tree
-        biolink_model = yaml.safe_load(response.text)
+        linkml_model = yaml.safe_load(response.text)
         parent_to_child_dict = defaultdict(set)
-        for slot_name_english, info in biolink_model["slots"].items():
+        for slot_name_english, info in linkml_model["slots"].items():
             slot_name = convert_predicate_to_trapi_format(slot_name_english)
             parent_name_english = info.get("is_a")
             if parent_name_english:
@@ -60,20 +60,20 @@ def load_predicate_tree_data(biolink_version: str) -> Tuple[List[dict], str]:
         root_node = {"name": "related_to"}
         predicate_tree = get_tree_node_recursive(root_node, parent_to_child_dict)
 
-        biolink_version = biolink_model["version"]
-        return [predicate_tree], biolink_version
+        linkml_version = linkml_model["version"]
+        return [predicate_tree], linkml_version
     else:
         return [], ""
 
 
-def load_category_tree_data(biolink_version: str, return_parent_to_child_dict: bool = False) -> tuple:
+def load_category_tree_data(linkml_version: str, return_parent_to_child_dict: bool = False) -> tuple:
     # Grab Biolink yaml file and load into dictionary tree structures
-    response = get_biolink_data(biolink_version)
+    response = get_linkml_data(linkml_version)
     if response.status_code == 200:
         # Build categories tree
-        biolink_model = yaml.safe_load(response.text)
+        linkml_model = yaml.safe_load(response.text)
         parent_to_child_dict = defaultdict(set)
-        for slot_name_english, info in biolink_model["classes"].items():
+        for slot_name_english, info in linkml_model["classes"].items():
             slot_name = convert_category_to_trapi_format(slot_name_english)
             parent_name_english = info.get("is_a")
             if parent_name_english:
@@ -83,25 +83,25 @@ def load_category_tree_data(biolink_version: str, return_parent_to_child_dict: b
         root_node = {"name": "NamedThing", "parent": None}
         category_tree = get_tree_node_recursive(root_node, parent_to_child_dict)
 
-        biolink_version = biolink_model["version"]
-        return ([category_tree], biolink_version, parent_to_child_dict) if return_parent_to_child_dict else ([category_tree], biolink_version)
+        linkml_version = linkml_model["version"]
+        return ([category_tree], linkml_version, parent_to_child_dict) if return_parent_to_child_dict else ([category_tree], linkml_version)
     else:
         return ([], "", dict()) if return_parent_to_child_dict else ([], "")
 
 
-def load_aspect_tree_data(biolink_version: str) -> Tuple[List[dict], str]:
+def load_aspect_tree_data(linkml_version: str) -> Tuple[List[dict], str]:
     # Grab Biolink yaml file and load into dictionary tree structures
-    response = get_biolink_data(biolink_version)
+    response = get_linkml_data(linkml_version)
     if response.status_code == 200:
-        biolink_model = yaml.safe_load(response.text)
+        linkml_model = yaml.safe_load(response.text)
         # Figure out if we're on a version of Biolink that has qualifier aspect info
-        biolink_version = biolink_model["version"]
-        if biolink_version >= "3.0.0":
-            aspect_enum_field_name = "gene_or_gene_product_or_chemical_entity_aspect_enum" if biolink_version.startswith("3.0") else "GeneOrGeneProductOrChemicalEntityAspectEnum"
+        linkml_version = linkml_model["version"]
+        if linkml_version >= "3.0.0":
+            aspect_enum_field_name = "gene_or_gene_product_or_chemical_entity_aspect_enum" if linkml_version.startswith("3.0") else "GeneOrGeneProductOrChemicalEntityAspectEnum"
             # Build aspects tree
             parent_to_child_dict = defaultdict(set)
             root_name = "[root]"
-            for aspect_name, info in biolink_model["enums"][aspect_enum_field_name]["permissible_values"].items():
+            for aspect_name, info in linkml_model["enums"][aspect_enum_field_name]["permissible_values"].items():
                 parent = info.get("is_a", root_name) if info else root_name
                 parent_to_child_dict[parent].add(aspect_name)
 
@@ -110,14 +110,14 @@ def load_aspect_tree_data(biolink_version: str) -> Tuple[List[dict], str]:
         else:
             aspect_tree = dict()
 
-        return [aspect_tree], biolink_version
+        return [aspect_tree], linkml_version
     else:
         return [], ""
 
 
-def load_category_er_tree_data(biolink_version: str, return_parent_to_child_dict: bool = False) -> tuple:
+def load_category_er_tree_data(linkml_version: str, return_parent_to_child_dict: bool = False) -> tuple:
     # First build the standard category tree
-    category_tree, biolink_version, parent_to_child_map = load_category_tree_data(biolink_version, return_parent_to_child_dict=True)
+    category_tree, linkml_version, parent_to_child_map = load_category_tree_data(linkml_version, return_parent_to_child_dict=True)
     child_to_parent_map = {child_name: parent_name for parent_name, children_names in parent_to_child_map.items()
                            for child_name in children_names}
 
@@ -136,14 +136,14 @@ def load_category_er_tree_data(biolink_version: str, return_parent_to_child_dict
     root_node = {"name": "NamedThing", "parent": None}
     category_tree_for_er = get_tree_node_recursive(root_node, parent_to_child_map_revised)
 
-    return ([category_tree_for_er], biolink_version, parent_to_child_map_revised) if return_parent_to_child_dict else ([category_tree_for_er], biolink_version)
+    return ([category_tree_for_er], linkml_version, parent_to_child_map_revised) if return_parent_to_child_dict else ([category_tree_for_er], linkml_version)
 
 
-def generate_major_branches_maps(biolink_version: str, for_entity_resolution: bool = False) -> dict:
+def generate_major_branches_maps(linkml_version: str, for_entity_resolution: bool = False) -> dict:
     if for_entity_resolution:
-        category_tree, biolink_version, parent_to_child_map = load_category_er_tree_data(biolink_version, return_parent_to_child_dict=True)
+        category_tree, linkml_version, parent_to_child_map = load_category_er_tree_data(linkml_version, return_parent_to_child_dict=True)
     else:
-        category_tree, biolink_version, parent_to_child_map = load_category_tree_data(biolink_version, return_parent_to_child_dict=True)
+        category_tree, linkml_version, parent_to_child_map = load_category_tree_data(linkml_version, return_parent_to_child_dict=True)
     named_thing_node = category_tree[0]
     # Record which are our depth-one categories (first nodes off of 'NamedThing')
     # Exception is for BiologicalEntity branch, for entity resolution work; there we use the depth-two categories
@@ -186,56 +186,56 @@ def generate_major_branches_maps(biolink_version: str, for_entity_resolution: bo
 
 
 @app.route("/")
-@app.route("/<biolink_version>")
+@app.route("/<linkml_version>")
 @app.route("/categories")
-@app.route("/categories/<biolink_version>")
-def categories(biolink_version=None):
-    category_tree, biolink_version = load_category_tree_data(biolink_version)
+@app.route("/categories/<linkml_version>")
+def categories(linkml_version=None):
+    category_tree, linkml_version = load_category_tree_data(linkml_version)
     return render_template("categories.html",
                            categories=category_tree,
-                           biolink_version=biolink_version)
+                           linkml_version=linkml_version)
 
 
 @app.route("/predicates")
-@app.route("/predicates/<biolink_version>")
-def predicates(biolink_version=None):
-    predicate_tree, biolink_version = load_predicate_tree_data(biolink_version)
+@app.route("/predicates/<linkml_version>")
+def predicates(linkml_version=None):
+    predicate_tree, linkml_version = load_predicate_tree_data(linkml_version)
     return render_template("predicates.html",
                            predicates=predicate_tree,
-                           biolink_version=biolink_version)
+                           linkml_version=linkml_version)
 
 
 @app.route("/categories/er")
-@app.route("/categories/er/<biolink_version>")
-def categories_for_entity_resolution(biolink_version=None):
-    category_tree_for_er, biolink_version = load_category_er_tree_data(biolink_version)
+@app.route("/categories/er/<linkml_version>")
+def categories_for_entity_resolution(linkml_version=None):
+    category_tree_for_er, linkml_version = load_category_er_tree_data(linkml_version)
     return render_template("categories.html",
                            categories=category_tree_for_er,
-                           biolink_version=biolink_version)
+                           linkml_version=linkml_version)
 
 
 @app.route("/aspects")
-@app.route("/aspects/<biolink_version>")
-def aspects(biolink_version=None):
-    aspect_tree, biolink_version = load_aspect_tree_data(biolink_version)
+@app.route("/aspects/<linkml_version>")
+def aspects(linkml_version=None):
+    aspect_tree, linkml_version = load_aspect_tree_data(linkml_version)
     return render_template("aspects.html",
                            aspects=aspect_tree,
-                           biolink_version=biolink_version)
+                           linkml_version=linkml_version)
 
 
 @app.route("/major_branches")
-@app.route("/major_branches/<biolink_version>")
+@app.route("/major_branches/<linkml_version>")
 @cross_origin()
-def get_major_branches_maps(biolink_version=None):
-    maps = generate_major_branches_maps(biolink_version, for_entity_resolution=False)
+def get_major_branches_maps(linkml_version=None):
+    maps = generate_major_branches_maps(linkml_version, for_entity_resolution=False)
     return jsonify(maps)
 
 
 @app.route("/major_branches/er")
-@app.route("/major_branches/er/<biolink_version>")
+@app.route("/major_branches/er/<linkml_version>")
 @cross_origin()
-def get_major_branches_maps_for_entity_resolution(biolink_version=None):
-    maps = generate_major_branches_maps(biolink_version, for_entity_resolution=True)
+def get_major_branches_maps_for_entity_resolution(linkml_version=None):
+    maps = generate_major_branches_maps(linkml_version, for_entity_resolution=True)
     return jsonify(maps)
 
 
