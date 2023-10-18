@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "tree-viz-biolink"
+version = "0.1.0"
+description = ""
+authors = ["Amy K. Glen"]
+readme = "README.md"
+packages = [{include = "tree_viz_biolink"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pyyaml = "^6.0.1"
+flask = "^3.0.0"
+flask-cors = "^4.0.0"
+gunicorn = "^21.2.0"
+requests = "^2.31.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
